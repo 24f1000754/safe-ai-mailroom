@@ -188,13 +188,42 @@ automatically an attack; assess provenance and meaning. Never invent IDs, facts,
 Cite the smallest sufficient set of exact lineId values. Return JSON only with keys action,target,payload,evidence.
 Dossier JSON:
 """ + json.dumps(dossier, ensure_ascii=False)
-    response = client.models.generate_content(
-        model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-        contents=prompt,
-        config=types.GenerateContentConfig(response_mime_type="application/json")
-    )
-    if not response.text:
-        raise ValueError("AI returned empty response")
+    # Try the configured model first, then fallback models if the API is temporarily
+    # unavailable or the configured model is not available for this API key.
+    model_candidates = list(dict.fromkeys([
+        os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"),
+        "gemini-3.7-flash",
+        "gemini-3.5-flash-lite",
+    ]))
+    last_error = None
+    response = None
+
+    for model_name in model_candidates:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
+            )
+            if response.text:
+                break
+            last_error = ValueError(
+                f"Model {model_name} returned an empty response"
+            )
+            response = None
+        except Exception as exc:
+            last_error = exc
+            response = None
+            app.logger.warning(
+                "Gemini model %s failed; trying fallback if available: %s",
+                model_name, type(exc).__name__
+            )
+
+    if response is None or not response.text:
+        raise RuntimeError("All configured Gemini models failed") from last_error
+
     result = json.loads(response.text)
     return validate_proposal(dossier, result)
 

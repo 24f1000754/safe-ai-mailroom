@@ -27,7 +27,8 @@ CALL_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{12,128}$")
 # Models that exist on your key (from list_models). Mixed families so that
 # if one family is overloaded (503), another one is probably free.
 MODELS = list(dict.fromkeys([
-    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
+    os.environ.get("GEMINI_MODEL", "gemini-2.8-flash"),
+    "gemini-2.8-flash",
     "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-3.7-flash",
@@ -245,8 +246,8 @@ def ai_decision(dossier, deadline):
                 return validate_proposal(dossier, result)
             except Exception as exc:
                 last_error = exc
-                app.logger.warning("model %s attempt %d failed: %s",
-                                   model_name, attempt, type(exc).__name__)
+                app.logger.warning("model %s attempt %d failed: %s: %s",
+                                   model_name, attempt, type(exc).__name__, str(exc)[:400])
         # All models failed this round: back off a little, then retry.
         sleep_for = min(2 ** attempt, 4) + random.random()
         if time.time() + sleep_for > deadline - 2:

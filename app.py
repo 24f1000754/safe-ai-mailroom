@@ -594,8 +594,12 @@ def too_large(_exc):
     return error("Request body exceeds 1 MiB", 413)
 
 
+from werkzeug.exceptions import HTTPException
+
 @app.errorhandler(Exception)
 def unexpected_error(exc):
+    if isinstance(exc, HTTPException):
+        return error(exc.description or exc.name, exc.code or 500)
     app.logger.exception("Unhandled request error")
     return error("Internal server error", 500)
 

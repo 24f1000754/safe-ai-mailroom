@@ -603,7 +603,6 @@ def unexpected_error(exc):
     app.logger.exception("Unhandled request error")
     return error("Internal server error", 500)
 
-
 init_db()
 
 if __name__ == "__main__":
